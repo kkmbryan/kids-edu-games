@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06140c">
+  <title>足球代數</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <canvas id="fx-canvas" aria-hidden="true"></canvas>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow bg-glow-a" aria-hidden="true"></div>
+  <div class="bg-glow bg-glow-b" aria-hidden="true"></div>
+  <div class="bg-glow bg-glow-c" aria-hidden="true"></div>
+
+  <div class="app-shell" id="app-shell">
+    <header class="topbar glass-bar">
+      <p class="brand"><span class="brand-glow">足球代數</span></p>
+      <button type="button" id="sound-toggle" class="pill-btn" aria-pressed="true">音效：開</button>
+    </header>
+
+    <main>
+      <noscript>
+        <p class="noscript">請開啟 JavaScript，這個練習才能運作。</p>
+      </noscript>
+
+      <section id="screen-home" class="screen">
+        <div class="hero">
+          <div class="mini-pitch neon-frame" aria-hidden="true">
+            <span class="pitch-sheen"></span>
+            <span class="mini-halfway"></span>
+            <span class="mini-circle"></span>
+            <span class="mini-goal"></span>
+            <span class="mini-ball neon-orb"></span>
+            <span class="floodlight flood-l"></span>
+            <span class="floodlight flood-r"></span>
+          </div>
+          <div class="hero-copy glass-panel">
+            <p class="chip">夜間球場 · 代數訓練</p>
+            <h1>足球代數</h1>
+            <p class="lede">香港小學五年級 · 5A1 代數的初步認識 · 5A2 簡易方程（一）</p>
+            <p>八場比賽，每場 6 題新鮮題目。只用整數，一邊學代數，一邊射門。</p>
+            <ul class="rules">
+              <li>第一次就答對，才算入球。</li>
+              <li>5 至 6 個入球得 3 星，3 至 4 個得 2 星，至少 1 個得 1 星。</li>
+              <li>取得 1 星，就可以解鎖下一場。</li>
+            </ul>
+            <p id="home-stars" class="collected">已收集 0 / 24 星</p>
+            <div class="home-actions">
+              <button type="button" id="go-map" class="btn-primary btn-large">開始比賽</button>
+              <button type="button" id="reset-progress" class="btn-secondary">重設進度</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-map" class="screen" hidden>
+        <div class="map-head">
+          <button type="button" id="map-home" class="btn-secondary">主頁</button>
+          <div>
+            <h1>賽程</h1>
+            <p id="map-stars" class="collected">已收集 0 / 24 星</p>
+          </div>
+        </div>
+        <p id="map-error" class="map-error glass-panel" hidden>題目暫時未能產生，請再按一次。</p>
+        <div class="map-pitch neon-frame">
+          <span class="pitch-sheen"></span>
+          <ol id="level-list" class="level-list" aria-label="八場比賽"></ol>
+        </div>
+      </section>
+
+      <section id="screen-match" class="screen" hidden>
+        <div class="scoreboard glass-bar">
+          <button type="button" id="quit-match" class="btn-secondary">地圖</button>
+          <div class="scoreboard-title">
+            <p id="match-title">5A1</p>
+            <p id="match-progress" aria-live="polite">準備開球</p>
+          </div>
+          <div class="score-box neon-score">
+            <span>入球</span>
+            <strong id="score" aria-live="polite">0</strong>
+          </div>
+        </div>
+
+        <div class="match-body">
+          <div class="pitch neon-frame" id="pitch" aria-hidden="true">
+            <div class="pitch-grass">
+              <span class="pitch-sheen"></span>
+              <div class="floodlight flood-l"></div>
+              <div class="floodlight flood-r"></div>
+              <div class="halfway"></div>
+              <div class="center-circle"></div>
+              <div class="penalty"></div>
+              <div class="goal-wrap">
+                <svg class="goal-svg" viewBox="0 0 220 120" aria-hidden="true">
+                  <defs>
+                    <pattern id="goal-net" width="12" height="12" patternUnits="userSpaceOnUse">
+                      <path d="M0 12 L12 0" stroke="rgba(180,255,220,0.55)" stroke-width="1"></path>
+                    </pattern>
+                    <filter id="goal-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+                      <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <path d="M16 108 V18 H204 V108" fill="url(#goal-net)" stroke="#b8ffe0" stroke-width="6" stroke-linejoin="round" filter="url(#goal-glow)"></path>
+                </svg>
+                <div class="keeper" id="keeper">
+                  <span class="keeper-aura"></span>
+                  <span class="keeper-head"></span>
+                  <span class="keeper-body"></span>
+                </div>
+              </div>
+              <div class="ball neon-orb" id="ball">
+                <span class="ball-glow"></span>
+                <svg class="ball-svg" viewBox="0 0 64 64" aria-hidden="true">
+                  <circle cx="32" cy="32" r="30" fill="#ffffff" stroke="#0b1a12" stroke-width="2"></circle>
+                  <polygon points="32,14 42,24 38,36 26,36 22,24" fill="#0b1a12"></polygon>
+                  <polygon points="12,30 22,24 18,38 8,36" fill="#0b1a12"></polygon>
+                  <polygon points="52,30 42,24 46,38 56,36" fill="#0b1a12"></polygon>
+                  <polygon points="22,46 26,36 38,36 42,46 32,56" fill="#0b1a12"></polygon>
+                </svg>
+              </div>
+              <div id="fx-layer" class="fx-layer"></div>
+            </div>
+          </div>
+
+          <div class="play-panel glass-panel" id="play-panel">
+            <div id="coach-banner" class="coach" hidden>
+              <p class="coach-label">教練提示</p>
+              <p id="coach-tip"></p>
+              <button type="button" id="start-question" class="btn-primary btn-large">開球</button>
+            </div>
+
+            <div id="question-panel" hidden>
+              <p id="phase-label" class="phase-label" hidden></p>
+              <h2 id="prompt" class="prompt" tabindex="-1"></h2>
+              <p id="equation-reminder" class="reminder" hidden></p>
+              <div id="choices" class="choices" role="group" aria-label="選項"></div>
+              <div id="keypad" class="keypad" hidden>
+                <p id="typed" class="keypad-display is-empty" aria-live="polite">輸入 x</p>
+                <div class="keys" id="keys" role="group" aria-label="數字鍵盤">
+                  <button type="button" data-key="1">1</button>
+                  <button type="button" data-key="2">2</button>
+                  <button type="button" data-key="3">3</button>
+                  <button type="button" data-key="4">4</button>
+                  <button type="button" data-key="5">5</button>
+                  <button type="button" data-key="6">6</button>
+                  <button type="button" data-key="7">7</button>
+                  <button type="button" data-key="8">8</button>
+                  <button type="button" data-key="9">9</button>
+                  <button type="button" data-key="clear">清除</button>
+                  <button type="button" data-key="0">0</button>
+                  <button type="button" data-key="submit">提交</button>
+                </div>
+              </div>
+              <div id="feedback" class="feedback glass-inset" hidden role="status" aria-live="polite">
+                <p id="feedback-title" class="feedback-title"></p>
+                <p id="feedback-note"></p>
+                <ol id="feedback-steps"></ol>
+                <p id="feedback-check" class="feedback-check"></p>
+                <button type="button" id="feedback-next" class="btn-primary btn-large">下一題</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-result" class="screen" hidden>
+        <div class="result-card glass-panel">
+          <h1 id="result-title">全場完結</h1>
+          <p id="result-score">第一次射中 0 題，共 6 題。</p>
+          <div id="result-stars" class="result-stars" aria-label="0 星"></div>
+          <p id="result-note"></p>
+          <div class="result-actions">
+            <button type="button" id="replay" class="btn-primary btn-large">再賽一場</button>
+            <button type="button" id="back-map" class="btn-secondary btn-large">返回地圖</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="quit-confirm" class="modal" hidden>
+    <div class="modal-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="quit-text">
+      <p id="quit-text">離開本場？這場進度不會儲存。星星要全場完結才會儲存。</p>
+      <div class="modal-actions">
+        <button type="button" id="quit-stay" class="btn-primary">留下</button>
+        <button type="button" id="quit-leave" class="btn-secondary">離開</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-confirm" class="modal" hidden>
+    <div class="modal-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="reset-text">
+      <p id="reset-text">重設全部進度？所有星星和解鎖都會清除，而且不能復原。</p>
+      <div class="modal-actions">
+        <button type="button" id="reset-cancel" class="btn-primary">取消</button>
+        <button type="button" id="reset-confirm-btn" class="btn-secondary btn-danger">確定重設</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./questions.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
