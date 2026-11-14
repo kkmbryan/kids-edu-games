@@ -7,6 +7,15 @@
   const STORAGE_KEY = 'soccer-algebra-stars-v1';
   const QUESTIONS_PER_MATCH = 6;
 
+  const ENCOURAGE = [
+    '漂亮射門！',
+    '平衡做得好！',
+    '完美入球！',
+    '代數勁過門將！',
+    '方程解得漂亮！',
+    '再來一球！'
+  ];
+
   const state = {
     soundOn: true,
     stars: loadStars(),
@@ -15,14 +24,16 @@
     match: null,
     qIndex: 0,
     firstTryGoals: 0,
+    streak: 0,
+    bestStreak: 0,
+    encourageIndex: 0,
     attempt: 0,
     locked: false,
     typed: '',
     wordPhase: 0,
     missedThisQuestion: false,
     currentItem: null,
-    activePhase: null,
-    audioCtx: null
+    activePhase: null
   };
 
   const els = {
@@ -43,6 +54,7 @@
     matchTitle: document.getElementById('match-title'),
     matchProgress: document.getElementById('match-progress'),
     score: document.getElementById('score'),
+    streak: document.getElementById('streak'),
     pitch: document.getElementById('pitch'),
     fxLayer: document.getElementById('fx-layer'),
     appShell: document.getElementById('app-shell'),
@@ -65,9 +77,12 @@
     feedbackCheck: document.getElementById('feedback-check'),
     feedbackNext: document.getElementById('feedback-next'),
     resultTitle: document.getElementById('result-title'),
-    resultScore: document.getElementById('result-score'),
+    resultBadge: document.getElementById('result-badge'),
     resultStars: document.getElementById('result-stars'),
     resultNote: document.getElementById('result-note'),
+    statFirstTry: document.getElementById('stat-first-try'),
+    statBestStreak: document.getElementById('stat-best-streak'),
+    statMatchStars: document.getElementById('stat-match-stars'),
     replay: document.getElementById('replay'),
     backMap: document.getElementById('back-map'),
     quitConfirm: document.getElementById('quit-confirm'),
@@ -86,6 +101,34 @@
     bursts: [],
     parallax: { x: 0, y: 0, tx: 0, ty: 0 }
   };
+
+  function audio() {
+    return window.soccerAudio || null;
+  }
+
+  function playGoalSound() {
+    if (!state.soundOn) return;
+    const a = audio();
+    if (a) a.playGoal();
+  }
+
+  function playSaveSound() {
+    if (!state.soundOn) return;
+    const a = audio();
+    if (a) a.playSave();
+  }
+
+  function playTapSound() {
+    if (!state.soundOn) return;
+    const a = audio();
+    if (a) a.playTap();
+  }
+
+  function playStarSound() {
+    if (!state.soundOn) return;
+    const a = audio();
+    if (a) a.playStar();
+  }
 
   function loadStars() {
     try {
@@ -122,8 +165,34 @@
     return starsFor(levelId - 1) >= 1;
   }
 
-  function starText(n) {
-    return '★'.repeat(n) + '☆'.repeat(3 - n);
+  function nextUnlockedUnplayedId() {
+    const levels = window.SoccerAlgebra.LEVELS;
+    for (let i = 0; i < levels.length; i++) {
+      const id = levels[i].id;
+      if (isUnlocked(id) && starsFor(id) === 0) return id;
+    }
+    return null;
+  }
+
+  function updateStreakDisplay() {
+    if (els.streak) els.streak.textContent = String(state.streak);
+  }
+
+  function bumpStreak() {
+    state.streak += 1;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    updateStreakDisplay();
+  }
+
+  function resetStreak() {
+    state.streak = 0;
+    updateStreakDisplay();
+  }
+
+  function nextEncourage() {
+    const line = ENCOURAGE[state.encourageIndex % ENCOURAGE.length];
+    state.encourageIndex += 1;
+    return line;
   }
 
   function showScreen(name) {
@@ -139,68 +208,41 @@
     els.mapStars.textContent = `已收集 ${t} / 24 星`;
   }
 
+  function starText(n) {
+    return '★'.repeat(n) + '☆'.repeat(3 - n);
+  }
+
   function renderMap() {
     updateStarDisplays();
     els.mapError.hidden = true;
     els.levelList.innerHTML = '';
     const levels = window.SoccerAlgebra.LEVELS;
+    const nextId = nextUnlockedUnplayedId();
     levels.forEach((level) => {
       const unlocked = isUnlocked(level.id);
       const stars = starsFor(level.id);
       const li = document.createElement('li');
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'level-card' + (unlocked ? '' : ' is-locked');
+      const isNext = unlocked && level.id === nextId;
+      btn.className =
+        'level-card' +
+        (unlocked ? '' : ' is-locked') +
+        (isNext ? ' is-next-pulse' : '');
       btn.disabled = !unlocked;
       btn.innerHTML =
         `<span class="level-num">${level.id}</span>` +
         `<span class="level-meta"><strong>${level.title}</strong><span>${level.unit}</span></span>` +
         `<span class="level-stars" aria-label="${stars} 星">${unlocked ? starText(stars) : '🔒'}</span>`;
       if (unlocked) {
-        btn.addEventListener('click', () => startMatch(level.id));
+        btn.addEventListener('click', () => {
+          playTapSound();
+          startMatch(level.id);
+        });
       }
       li.appendChild(btn);
       els.levelList.appendChild(li);
     });
-  }
-
-  function ensureAudio() {
-    if (!state.audioCtx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return null;
-      state.audioCtx = new Ctx();
-    }
-    if (state.audioCtx.state === 'suspended') {
-      state.audioCtx.resume();
-    }
-    return state.audioCtx;
-  }
-
-  function beep(freq, duration, type) {
-    if (!state.soundOn) return;
-    const ctx = ensureAudio();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type || 'sine';
-    osc.frequency.value = freq;
-    gain.gain.value = 0.0001;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    const now = ctx.currentTime;
-    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    osc.start(now);
-    osc.stop(now + duration + 0.02);
-  }
-
-  function playGoalSound() {
-    beep(520, 0.12, 'triangle');
-    setTimeout(() => beep(780, 0.18, 'triangle'), 90);
-  }
-
-  function playSaveSound() {
-    beep(180, 0.22, 'square');
   }
 
   function resetPitch() {
@@ -235,10 +277,10 @@
   function spawnBurst(originX, originY, mode) {
     if (prefersReducedMotion || !fx.ctx) return;
     const colors =
-      mode === 'goal'
+      mode === 'goal' || mode === 'star'
         ? ['#ffd56a', '#5dffb0', '#6ef0ff', '#ffffff', '#ffe08a']
         : ['#ff6b7a', '#ffb4a8', '#ffffff', '#ffd0d4'];
-    const count = mode === 'goal' ? 42 : 28;
+    const count = mode === 'star' ? 56 : mode === 'goal' ? 42 : 28;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 5.5 + 2;
@@ -246,7 +288,7 @@
         x: originX,
         y: originY,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - (mode === 'goal' ? 2.2 : 1.2),
+        vy: Math.sin(angle) * speed - (mode === 'goal' || mode === 'star' ? 2.2 : 1.2),
         size: Math.random() * 5 + 3,
         color: colors[i % colors.length],
         life: 1,
@@ -263,6 +305,13 @@
     const x = rect.left + rect.width * (mode === 'goal' ? 0.78 : 0.62);
     const y = rect.top + rect.height * 0.42;
     spawnBurst(x, y, mode);
+  }
+
+  function burstAtResult() {
+    const card = document.querySelector('.result-card');
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    spawnBurst(rect.left + rect.width / 2, rect.top + rect.height * 0.28, 'star');
   }
 
   function showScorePopup(text, kind) {
@@ -343,7 +392,6 @@
 
   function animateGoal(popupText) {
     resetPitch();
-    // force reflow so animation can replay
     void els.pitch.offsetWidth;
     els.pitch.classList.add('is-goal');
     playGoalSound();
@@ -372,6 +420,9 @@
     state.match = match;
     state.qIndex = 0;
     state.firstTryGoals = 0;
+    state.streak = 0;
+    state.bestStreak = 0;
+    state.encourageIndex = 0;
     state.attempt = 0;
     state.locked = false;
     state.typed = '';
@@ -382,6 +433,7 @@
 
     els.matchTitle.textContent = match.title;
     els.score.textContent = '0';
+    updateStreakDisplay();
     els.matchProgress.textContent = '準備開球';
     els.coachTip.textContent = match.tip;
     els.coachBanner.hidden = false;
@@ -392,6 +444,7 @@
   }
 
   function beginQuestions() {
+    playTapSound();
     els.coachBanner.hidden = true;
     els.questionPanel.hidden = false;
     showQuestion();
@@ -468,7 +521,7 @@
     }
 
     const isNumeric = phase.answer !== undefined && phase.choices === undefined;
-    if (isNumeric || (phase.phase === 'solve')) {
+    if (isNumeric || phase.phase === 'solve') {
       els.keypad.hidden = false;
       state.typed = '';
       updateTypedDisplay();
@@ -503,16 +556,19 @@
   function onKeypad(key) {
     if (state.locked || els.keypad.hidden) return;
     if (key === 'clear') {
+      playTapSound();
       state.typed = '';
       updateTypedDisplay();
       return;
     }
     if (key === 'submit') {
       if (state.typed === '') return;
+      playTapSound();
       onAnswer(state.typed);
       return;
     }
     if (state.typed.length >= 3) return;
+    playTapSound();
     state.typed += key;
     updateTypedDisplay();
   }
@@ -539,29 +595,29 @@
       const phaseFirstTry = state.attempt === 1;
       const itemComplete = isLastPhaseOfItem();
       const itemFirstTry = phaseFirstTry && !state.missedThisQuestion;
+      const praise = nextEncourage();
 
       if (itemComplete && itemFirstTry) {
         state.firstTryGoals += 1;
         els.score.textContent = String(state.firstTryGoals);
+        bumpStreak();
         animateGoal('+1 入球');
-        showFeedback(true, true, phase, false);
+        showFeedback(true, true, phase, false, false, false, praise);
       } else if (itemComplete) {
-        animateGoal('入球！');
-        showFeedback(true, false, phase, false);
+        animateGoal(praise);
+        showFeedback(true, false, phase, false, false, false, praise);
+      } else if (phaseFirstTry && !state.missedThisQuestion) {
+        animateGoal(praise);
+        showFeedback(true, true, phase, false, false, true, praise);
       } else {
-        // mid word-problem step: short success, no scoreboard tick
-        if (phaseFirstTry && !state.missedThisQuestion) {
-          animateGoal('正確！');
-          showFeedback(true, true, phase, false, false, true);
-        } else {
-          animateGoal('正確！');
-          showFeedback(true, false, phase, false, false, true);
-        }
+        animateGoal(praise);
+        showFeedback(true, false, phase, false, false, true, praise);
       }
       return;
     }
 
     state.missedThisQuestion = true;
+    resetStreak();
     if (choiceBtn) choiceBtn.classList.add('is-wrong');
     animateSave();
 
@@ -583,7 +639,7 @@
     });
   }
 
-  function showFeedback(isCorrect, firstTry, phase, retryAfter, reveal, midStep) {
+  function showFeedback(isCorrect, firstTry, phase, retryAfter, reveal, midStep, praise) {
     els.feedback.hidden = false;
     els.feedback.classList.toggle('is-goal', isCorrect);
     els.feedback.classList.toggle('is-save', !isCorrect);
@@ -597,17 +653,17 @@
     els.feedbackCheck.textContent = phase.check ? `檢查：${phase.check}` : '';
 
     if (isCorrect && midStep) {
-      els.feedbackTitle.textContent = '正確！';
+      els.feedbackTitle.textContent = praise || '正確！';
       els.feedbackNote.textContent = firstTry
         ? '這一步答對了，繼續完成整題才計入球。'
         : '這一步對了，繼續下一小步。';
       els.feedbackNext.textContent = nextButtonLabel(true);
     } else if (isCorrect && firstTry) {
-      els.feedbackTitle.textContent = '入球！';
+      els.feedbackTitle.textContent = praise || '入球！';
       els.feedbackNote.textContent = '第一次就射中，計一分。';
       els.feedbackNext.textContent = nextButtonLabel(true);
     } else if (isCorrect) {
-      els.feedbackTitle.textContent = '入球！';
+      els.feedbackTitle.textContent = praise || '入球！';
       els.feedbackNote.textContent = '這題有錯過，不算第一次入球。';
       els.feedbackNext.textContent = nextButtonLabel(true);
     } else if (retryAfter) {
@@ -621,6 +677,7 @@
     }
 
     els.feedbackNext.onclick = () => {
+      playTapSound();
       if (retryAfter) {
         state.locked = false;
         els.feedback.hidden = true;
@@ -672,6 +729,39 @@
     return 0;
   }
 
+  function badgeLine(earned) {
+    if (earned >= 3) return '金球教練認證！場上代數王！';
+    if (earned === 2) return '優秀前鋒！再練就拿三星。';
+    if (earned === 1) return '入球解鎖！下一場等你。';
+    return '再練一場，至少射中 1 題就能解鎖。';
+  }
+
+  function renderResultStars(earned) {
+    els.resultStars.innerHTML = '';
+    els.resultStars.setAttribute('aria-label', `${earned} 星`);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    for (let i = 0; i < 3; i++) {
+      const filled = i < earned;
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 64 64');
+      svg.setAttribute('class', 'result-star-svg' + (filled ? ' earned' : ''));
+      if (filled && !prefersReducedMotion) {
+        svg.style.animationDelay = `${i * 0.14}s`;
+      }
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute(
+        'd',
+        'M32 4L40.2 21.3L59.2 23.8L45.3 37L48.8 55.9L32 46.7L15.2 55.9L18.7 37L4.8 23.8L23.8 21.3L32 4Z'
+      );
+      path.setAttribute('fill', filled ? '#ffd56a' : 'rgba(148, 180, 160, 0.22)');
+      path.setAttribute('stroke', filled ? '#ffe08a' : 'rgba(148, 180, 160, 0.4)');
+      path.setAttribute('stroke-width', '2.5');
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(path);
+      els.resultStars.appendChild(svg);
+    }
+  }
+
   function finishMatch() {
     const goals = state.firstTryGoals;
     const earned = calcStars(goals);
@@ -683,9 +773,11 @@
     const kept = starsFor(state.levelId);
 
     els.resultTitle.textContent = earned > 0 ? '全場完結' : '再練一場';
-    els.resultScore.textContent = `第一次射中 ${goals} 題，共 ${QUESTIONS_PER_MATCH} 題。`;
-    els.resultStars.textContent = starText(kept);
-    els.resultStars.setAttribute('aria-label', `${kept} 星`);
+    els.resultBadge.textContent = badgeLine(earned);
+    els.statFirstTry.textContent = `${goals} / ${QUESTIONS_PER_MATCH}`;
+    els.statBestStreak.textContent = String(state.bestStreak);
+    els.statMatchStars.textContent = String(earned);
+    renderResultStars(kept);
 
     if (earned === 0) {
       els.resultNote.textContent = '這場未取得星星。再賽一場，至少射中 1 題就可以解鎖下一場。';
@@ -701,6 +793,10 @@
     }
 
     showScreen('result');
+    if (earned > 0) {
+      playStarSound();
+      window.setTimeout(() => burstAtResult(), 80);
+    }
   }
 
   function openQuitConfirm() {
@@ -736,18 +832,18 @@
     state.soundOn = !state.soundOn;
     els.soundToggle.setAttribute('aria-pressed', state.soundOn ? 'true' : 'false');
     els.soundToggle.textContent = state.soundOn ? '音效：開' : '音效：關';
-    if (state.soundOn) {
-      ensureAudio();
-      beep(440, 0.08, 'sine');
-    }
+    const a = audio();
+    if (a) a.setMuted(!state.soundOn, state.soundOn);
   });
 
   els.goMap.addEventListener('click', () => {
+    playTapSound();
     renderMap();
     showScreen('map');
   });
 
   els.mapHome.addEventListener('click', () => {
+    playTapSound();
     updateStarDisplays();
     showScreen('home');
   });
@@ -773,10 +869,12 @@
   els.resetConfirmBtn.addEventListener('click', resetProgress);
 
   els.replay.addEventListener('click', () => {
+    playTapSound();
     if (state.levelId) startMatch(state.levelId);
   });
 
   els.backMap.addEventListener('click', () => {
+    playTapSound();
     renderMap();
     showScreen('map');
   });
@@ -798,7 +896,12 @@
     requestAnimationFrame(tickFx);
   }
 
-  // Init
+  // Init — sound default ON
+  if (audio()) {
+    audio().muted = false;
+  }
+  els.soundToggle.setAttribute('aria-pressed', 'true');
+  els.soundToggle.textContent = '音效：開';
   updateStarDisplays();
   showScreen('home');
 })();

@@ -32,9 +32,44 @@
             <span class="mini-halfway"></span>
             <span class="mini-circle"></span>
             <span class="mini-goal"></span>
-            <span class="mini-ball neon-orb"></span>
             <span class="floodlight flood-l"></span>
             <span class="floodlight flood-r"></span>
+            <svg class="hero-mascot" viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="coachShirt" x1="70" y1="50" x2="130" y2="120" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#4db8ff"/>
+                  <stop offset="100%" stop-color="#1e5aa8"/>
+                </linearGradient>
+                <radialGradient id="ballShade" cx="0.35" cy="0.3" r="0.7">
+                  <stop offset="0%" stop-color="#ffffff"/>
+                  <stop offset="70%" stop-color="#e8eee9"/>
+                  <stop offset="100%" stop-color="#9fb0a8"/>
+                </radialGradient>
+              </defs>
+              <!-- coach body -->
+              <ellipse cx="88" cy="118" rx="28" ry="8" fill="rgba(0,0,0,0.25)"/>
+              <rect x="72" y="72" width="36" height="40" rx="10" fill="url(#coachShirt)" stroke="#0b1f33" stroke-width="2"/>
+              <circle cx="90" cy="52" r="18" fill="#ffe0c2" stroke="#1a2a20" stroke-width="2"/>
+              <path d="M74 48 Q90 36 106 48" fill="none" stroke="#1a2a20" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="84" cy="52" r="2.2" fill="#1a2a20"/>
+              <circle cx="96" cy="52" r="2.2" fill="#1a2a20"/>
+              <path d="M84 60 Q90 64 96 60" fill="none" stroke="#c4785a" stroke-width="2" stroke-linecap="round"/>
+              <!-- whistle -->
+              <circle cx="108" cy="78" r="5" fill="#ffd56a" stroke="#8d5a05" stroke-width="1.5"/>
+              <rect x="112" y="76" width="10" height="4" rx="1" fill="#ffd56a" stroke="#8d5a05" stroke-width="1"/>
+              <!-- clipboard -->
+              <rect x="48" y="78" width="22" height="28" rx="3" fill="#e8fff2" stroke="#0d1f16" stroke-width="1.5"/>
+              <rect x="52" y="84" width="14" height="2" rx="1" fill="#5dffb0"/>
+              <rect x="52" y="90" width="10" height="2" rx="1" fill="#a8d4bc"/>
+              <rect x="52" y="96" width="12" height="2" rx="1" fill="#a8d4bc"/>
+              <!-- ball -->
+              <g class="home-ball-spin">
+                <circle cx="148" cy="100" r="16" fill="url(#ballShade)" stroke="#0b1a12" stroke-width="2"/>
+                <polygon points="148,88 154,96 151,104 145,104 142,96" fill="#0b1a12"/>
+                <polygon points="136,98 142,96 140,106 132,104" fill="#0b1a12"/>
+                <polygon points="160,98 154,96 156,106 164,104" fill="#0b1a12"/>
+              </g>
+            </svg>
           </div>
           <div class="hero-copy glass-panel">
             <p class="chip">夜間球場 · 代數訓練</p>
@@ -77,9 +112,15 @@
             <p id="match-title">5A1</p>
             <p id="match-progress" aria-live="polite">準備開球</p>
           </div>
-          <div class="score-box neon-score">
-            <span>入球</span>
-            <strong id="score" aria-live="polite">0</strong>
+          <div class="score-cluster">
+            <div class="score-box streak-pill" title="連續首次入球">
+              <span>連勝</span>
+              <strong id="streak" aria-live="polite">0</strong>
+            </div>
+            <div class="score-box neon-score">
+              <span>入球</span>
+              <strong id="score" aria-live="polite">0</strong>
+            </div>
           </div>
         </div>
 
@@ -130,8 +171,20 @@
 
           <div class="play-panel glass-panel" id="play-panel">
             <div id="coach-banner" class="coach" hidden>
-              <p class="coach-label">教練提示</p>
-              <p id="coach-tip"></p>
+              <div class="coach-row">
+                <svg class="coach-avatar" viewBox="0 0 64 64" aria-hidden="true">
+                  <circle cx="32" cy="32" r="30" fill="rgba(93,255,176,0.12)" stroke="rgba(93,255,176,0.45)" stroke-width="2"/>
+                  <rect x="20" y="34" width="24" height="22" rx="7" fill="#1e5aa8" stroke="#0b1f33" stroke-width="1.5"/>
+                  <circle cx="32" cy="24" r="12" fill="#ffe0c2" stroke="#1a2a20" stroke-width="1.5"/>
+                  <circle cx="28" cy="24" r="1.6" fill="#1a2a20"/>
+                  <circle cx="36" cy="24" r="1.6" fill="#1a2a20"/>
+                  <path d="M28 30 Q32 33 36 30" fill="none" stroke="#c4785a" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <div class="coach-copy">
+                  <p class="coach-label">教練提示</p>
+                  <p id="coach-tip"></p>
+                </div>
+              </div>
               <button type="button" id="start-question" class="btn-primary btn-large">開球</button>
             </div>
 
@@ -171,9 +224,23 @@
 
       <section id="screen-result" class="screen" hidden>
         <div class="result-card glass-panel">
-          <h1 id="result-title">全場完結</h1>
-          <p id="result-score">第一次射中 0 題，共 6 題。</p>
           <div id="result-stars" class="result-stars" aria-label="0 星"></div>
+          <h1 id="result-title">全場完結</h1>
+          <p id="result-badge" class="result-badge"></p>
+          <div class="result-stats" aria-label="本場統計">
+            <div class="result-stat">
+              <span class="s-label">首次入球</span>
+              <span class="s-value" id="stat-first-try">0 / 6</span>
+            </div>
+            <div class="result-stat">
+              <span class="s-label">最高連勝</span>
+              <span class="s-value" id="stat-best-streak">0</span>
+            </div>
+            <div class="result-stat">
+              <span class="s-label">本場星</span>
+              <span class="s-value" id="stat-match-stars">0</span>
+            </div>
+          </div>
           <p id="result-note"></p>
           <div class="result-actions">
             <button type="button" id="replay" class="btn-primary btn-large">再賽一場</button>
@@ -205,6 +272,7 @@
   </div>
 
   <script src="./questions.js"></script>
+  <script src="./audio.js"></script>
   <script src="./game.js"></script>
 </body>
 </html>
