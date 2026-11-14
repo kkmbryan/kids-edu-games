@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>星際分數探險隊｜小五分數太空任務</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 星空與粒子畫布 -->
+  <canvas id="space-canvas" aria-hidden="true"></canvas>
+
+  <div class="app-shell">
+    <!-- ========== 開始畫面 ========== -->
+    <section id="screen-start" class="screen active" aria-label="遊戲開始畫面">
+      <div class="top-utility">
+        <span class="grade-pill">小學五年級 (P5) 數學</span>
+        <button id="btn-mute-start" class="btn-icon-pill mute-toggle" type="button" aria-label="切換音效">
+          <span class="mute-icon"></span>
+          <span class="mute-text">音效：開</span>
+        </button>
+      </div>
+
+      <div class="start-hero">
+        <div class="mascot-wrap" aria-hidden="true">
+          <!-- 太空船與太空人 SVG -->
+          <svg class="hero-svg" viewBox="0 0 220 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="shipBody" x1="60" y1="20" x2="160" y2="150" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#f8fafc" />
+                <stop offset="100%" stop-color="#cbd5e1" />
+              </linearGradient>
+              <linearGradient id="flameGrad" x1="110" y1="138" x2="110" y2="185" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#fde047" />
+                <stop offset="60%" stop-color="#f97316" />
+                <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+              </linearGradient>
+              <radialGradient id="planetGrad" cx="0.35" cy="0.35" r="0.7">
+                <stop offset="0%" stop-color="#a78bfa" />
+                <stop offset="100%" stop-color="#4c1d95" />
+              </radialGradient>
+            </defs>
+            <!-- 背景行星與星星 -->
+            <circle cx="38" cy="48" r="18" fill="url(#planetGrad)" opacity="0.85" />
+            <ellipse cx="38" cy="48" rx="30" ry="7" stroke="#ddd6fe" stroke-width="2.5" transform="rotate(-18 38 48)" opacity="0.75" />
+            <circle cx="186" cy="42" r="5" fill="#fde047" />
+            <circle cx="196" cy="94" r="3.5" fill="#38bdf8" />
+            <circle cx="24" cy="128" r="3" fill="#fde047" />
+
+            <!-- 噴射火焰 -->
+            <path class="rocket-flame" d="M94 138 C92 162, 104 176, 110 184 C116 176, 128 162, 126 138 Z" fill="url(#flameGrad)" />
+            <path d="M101 138 C101 154, 107 162, 110 168 C113 162, 119 154, 119 138 Z" fill="#fef08a" />
+
+            <!-- 左、右翼 -->
+            <path d="M76 96 L48 134 L76 128 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="2" stroke-linejoin="round" />
+            <path d="M144 96 L172 134 L144 128 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="2" stroke-linejoin="round" />
+
+            <!-- 火箭主體 -->
+            <path d="M110 18 C84 44, 72 82, 74 132 L146 132 C148 82, 136 44, 110 18 Z" fill="url(#shipBody)" stroke="#94a3b8" stroke-width="2" />
+            <!-- 鼻錐 -->
+            <path d="M110 18 C97 31, 88 46, 84 60 L136 60 C132 46, 123 31, 110 18 Z" fill="#fb7185" />
+            <!-- 底部噴口 -->
+            <rect x="88" y="132" width="44" height="9" rx="3" fill="#475569" />
+
+            <!-- 舷窗與可愛太空人 -->
+            <circle cx="110" cy="90" r="24" fill="#0f172a" stroke="#38bdf8" stroke-width="4" />
+            <!-- 太空人頭盔 -->
+            <circle cx="110" cy="92" r="14" fill="#e2e8f0" />
+            <rect x="100" y="84" width="20" height="13" rx="6" fill="#1e293b" />
+            <circle cx="106" cy="90" r="2.2" fill="#38bdf8" />
+            <circle cx="114" cy="90" r="2.2" fill="#38bdf8" />
+            <path d="M106 94 Q110 97 114 94" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" />
+            <circle cx="117" cy="86" r="2" fill="#ffffff" opacity="0.6" />
+          </svg>
+        </div>
+
+        <h1 class="game-title">星際分數探險隊</h1>
+        <p class="game-subtitle">完成 10 個星球任務，把分數能量裝滿火箭，成為宇宙數學小英雄！</p>
+      </div>
+
+      <div class="difficulty-panel">
+        <h2 class="panel-heading">選擇探險航道（難度）</h2>
+        <div class="difficulty-grid" role="radiogroup" aria-label="難度選擇">
+          <button class="diff-card selected" type="button" data-diff="easy" aria-pressed="true">
+            <span class="diff-badge easy">簡單</span>
+            <span class="diff-name">初級航道</span>
+            <span class="diff-desc">倍數分母加減與約分</span>
+          </button>
+          <button class="diff-card" type="button" data-diff="medium" aria-pressed="false">
+            <span class="diff-badge medium">中等</span>
+            <span class="diff-name">中級星雲</span>
+            <span class="diff-desc">最小公倍數通分與帶分數</span>
+          </button>
+          <button class="diff-card" type="button" data-diff="hard" aria-pressed="false">
+            <span class="diff-badge hard">困難</span>
+            <span class="diff-name">高級躍遷</span>
+            <span class="diff-desc">分數乘法與太空應用題</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="start-actions">
+        <button id="btn-play" class="btn-primary-cta" type="button">
+          <span>開始任務</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ========== 遊戲進行畫面 ========== -->
+    <section id="screen-play" class="screen" aria-label="答題任務畫面">
+      <header class="hud-bar">
+        <button id="btn-back-home" class="btn-icon-pill" type="button" aria-label="返回主畫面">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>返回</span>
+        </button>
+
+        <div class="progress-wrap" aria-label="任務進度">
+          <div class="progress-meta">
+            <span id="hud-q-count">第 1 / 10 題</span>
+            <span id="hud-diff-label" class="hud-diff-tag">簡單</span>
+          </div>
+          <div class="planet-track" id="planet-track" aria-hidden="true"></div>
+        </div>
+
+        <div class="hud-stats">
+          <div class="stat-pill streak-pill" title="連續第一次就答對的次數">
+            <span class="stat-icon">🔥</span>
+            <span>連勝 <strong id="hud-streak">0</strong></span>
+          </div>
+          <div class="stat-pill score-pill">
+            <span class="stat-icon">⭐</span>
+            <span><strong id="hud-score">0</strong></span>
+          </div>
+          <button id="btn-mute-play" class="btn-icon-pill mute-toggle icon-only" type="button" aria-label="切換音效">
+            <span class="mute-icon"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="mission-stage">
+        <article id="question-card" class="question-card">
+          <div class="card-header-row">
+            <span id="q-tag" class="q-tag">基礎通分</span>
+            <span id="q-attempt-note" class="q-attempt-note"></span>
+          </div>
+
+          <p id="q-story" class="q-story"></p>
+
+          <div id="q-expression" class="q-expression" aria-label="數學算式"></div>
+
+          <!-- 溫和引導提示區（答錯時顯示） -->
+          <div id="hint-box" class="hint-box hidden" role="status" aria-live="polite">
+            <div class="hint-header">
+              <span class="hint-badge">🛸 領航員提示</span>
+              <span class="hint-encourage">沒關係，再試一次！</span>
+            </div>
+            <p id="hint-text" class="hint-text"></p>
+            <div id="hint-visual" class="hint-visual"></div>
+          </div>
+
+          <!-- 答對回饋橫幅 -->
+          <div id="success-banner" class="success-banner hidden" role="status" aria-live="polite">
+            <span id="success-text">✨ 能量充滿！準備躍遷！</span>
+          </div>
+        </article>
+
+        <div id="choices-grid" class="choices-grid" role="group" aria-label="答案選項"></div>
+      </main>
+    </section>
+
+    <!-- ========== 結算畫面 ========== -->
+    <section id="screen-summary" class="screen" aria-label="任務結算畫面">
+      <div class="summary-card">
+        <div class="summary-stars" id="summary-stars" aria-label="星章評價"></div>
+        <h2 id="summary-title" class="summary-title">任務完成！</h2>
+        <p id="summary-subtitle" class="summary-subtitle"></p>
+
+        <div class="summary-stats-grid">
+          <div class="summary-stat">
+            <span class="s-label">一次答對題數</span>
+            <span class="s-value" id="stat-first-try">0 / 10</span>
+          </div>
+          <div class="summary-stat">
+            <span class="s-label">最高連勝</span>
+            <span class="s-value" id="stat-best-streak">0</span>
+          </div>
+          <div class="summary-stat">
+            <span class="s-label">總得分</span>
+            <span class="s-value" id="stat-total-score">0</span>
+          </div>
+        </div>
+
+        <div class="summary-actions">
+          <button id="btn-replay" class="btn-primary-cta" type="button">再玩一次</button>
+          <button id="btn-change-diff" class="btn-secondary-cta" type="button">切換難度</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="curriculum.js"></script>
+  <script src="audio.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
